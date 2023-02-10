@@ -14,7 +14,7 @@ const DEFAULT_SETTINGS: TodoistLinkSettings = {
 
 function getCurrentLine(editor: Editor, view: MarkdownView) {
 	const lineNumber = editor.getCursor().line
-	const lineText = editor.getLine(lineNumber)
+	const lineText = clearTaskFormatting(editor.getLine(lineNumber))
 	return {
 		lineText, lineNumber
 	}
