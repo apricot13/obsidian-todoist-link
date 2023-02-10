@@ -7,15 +7,23 @@ interface TodoistLinkSettings {
 	apikey: string;
 	applyDates: boolean;
 	applyPriority: boolean;
+	tagObsidianWhenAdded: boolean;
+	addedObsidianTag: string;
+	labelTodoistWhenAdded: boolean;
+	addedTodoistLabel: string;
 }
 
 const DEFAULT_SETTINGS: TodoistLinkSettings = {
 	apikey: '', 
 	transformToLink: false,
 	applyDates: false,
-	applyPriority: false
+	applyPriority: false,
+	tagObsidianWhenAdded: false,
+	addedObsidianTag: '',
+	labelTodoistWhenAdded: false,
+	addedTodoistLabel: ''
 }
-
+ 
 function getCurrentLine(editor: Editor, view: MarkdownView) {
 	const lineNumber = editor.getCursor().line
 	const lineText = editor.getLine(lineNumber)
@@ -96,7 +104,7 @@ function createProject(title: string, deepLink: string, api: TodoistApi) {
     .catch((error) => console.log(error))
 }
 
-export function createTask(processedLine: line, deepLink: string, api: TodoistApi, transformToLink: boolean, applyDates: boolean, applyPriority: boolean, fileName: string) {
+export function createTask(processedLine: line, deepLink: string, api: TodoistApi, transformToLink: boolean, applyDates: boolean, applyPriority: boolean, tagObsidianWhenAdded: boolean, addedObsidianTag: string, labelTodoistWhenAdded: boolean, addedTodoistLabel: string, fileName: string) {
 	console.log(processedLine)
 
 	let taskData:AddTaskArgs = {
@@ -112,6 +120,11 @@ export function createTask(processedLine: line, deepLink: string, api: TodoistAp
 	if(applyPriority) {
 		const priority = getPriority(processedLine.externalLinkFormat)
 		if(priority) taskData = {...taskData, priority: priority }
+	}
+
+	if(labelTodoistWhenAdded) {
+		const labels = [addedTodoistLabel ? addedTodoistLabel : 'obsidian']
+		taskData = {...taskData, labels }
 	}
 
 	api.addTask(taskData).then(
@@ -138,7 +151,9 @@ export function createTask(processedLine: line, deepLink: string, api: TodoistAp
 				} else {
 					view.editor.replaceRange(` ([Todoist](${task.url}))`, endRange, endRange);
 				}
-				
+				if(tagObsidianWhenAdded) {
+					view.editor.replaceRange(` #${addedObsidianTag ? addedObsidianTag : 'in-todoist'}`, endRange, endRange);
+				}
 			}
 		})
 	.catch((error) => console.log(error))
@@ -201,7 +216,7 @@ export default class TodoistLinkPlugin extends Plugin {
           			const obsidianDeepLink = (this.app as any).getObsidianUrl(activeFile)
 					const line = getCurrentLine(editor, view)
 					const task = prepareTask(line.lineText, this.app, activeFile)
-					createTask(task, obsidianDeepLink, this.getTodistApi(), this.settings.transformToLink, this.settings.applyDates, this.settings.applyPriority, fileName)
+					createTask(task, obsidianDeepLink, this.getTodistApi(), this.settings.transformToLink, this.settings.applyDates, this.settings.applyPriority, this.settings.tagObsidianWhenAdded, this.settings.addedObsidianTag, this.settings.labelTodoistWhenAdded, this.settings.addedTodoistLabel, fileName)
 				}
 			}
 		});
@@ -259,6 +274,45 @@ class TodoistLinkSettingTab extends PluginSettingTab {
 				})
 			});
 
+		
+			new Setting(containerEl)
+			.setName('Tag when added to todoist')
+			.setDesc('Enabling this setting will add the tag #in-todoist or custom to the line when the task is added to todoist.')
+			.addToggle( (toggle) => {
+				toggle
+				.setValue(this.plugin.settings.tagObsidianWhenAdded)
+				.onChange(async (value) => {
+					this.plugin.settings.tagObsidianWhenAdded = value;
+					await this.plugin.saveSettings();
+				})
+			})
+			.addText(text => text
+				.setPlaceholder('in-todoist')
+				.setValue(this.plugin.settings.addedObsidianTag)
+				.onChange(async (value) => {
+					this.plugin.settings.addedObsidianTag = value;
+					await this.plugin.saveSettings();
+				}));
+
+			new Setting(containerEl)
+				.setName('Add obsidian tag in todoist')
+				.setDesc('Enabling this setting will add the tag #obsidian or custom to task in todoist.')
+				.addToggle( (toggle) => {
+					toggle
+					.setValue(this.plugin.settings.labelTodoistWhenAdded)
+					.onChange(async (value) => {
+						this.plugin.settings.labelTodoistWhenAdded = value;
+						await this.plugin.saveSettings();
+					})
+				})
+				.addText(text => text
+					.setPlaceholder('obsidian')
+					.setValue(this.plugin.settings.addedTodoistLabel)
+					.onChange(async (value) => {
+						this.plugin.settings.addedTodoistLabel = value;
+						await this.plugin.saveSettings();
+					}));
+
 		new Setting(containerEl)
 			.setName('Apply dates in Todoist')
 			.setDesc('Enabling this setting will apply 📅 due, ⏳scheduled or 🛫start date in todoist. If multiple dates are present, 📅 due is used.')
@@ -282,7 +336,6 @@ class TodoistLinkSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				})
 			});
-
 
 	}
 }
