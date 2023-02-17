@@ -148,7 +148,7 @@ export function createTask(processedLine: line, deepLink: string, api: TodoistAp
 				if (transformToLink) {
 					view.editor.replaceRange(`[${processedLine.internalLinkFormat}](${task.url})`, startRange, endRange);
 				} else {
-					view.editor.replaceRange(` ([Todoist](${task.url}))`, endRange, endRange);
+					view.editor.replaceRange(` [Todoist](${task.url})`, endRange, endRange);
 				}
 				if(tagObsidianWhenAdded) {
 					view.editor.replaceRange(` #${addedObsidianTag ? addedObsidianTag : 'in-todoist'}`, endRange, endRange);
